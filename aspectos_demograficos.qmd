@@ -1,0 +1,153 @@
+---
+title: "Aspectos demográficos"
+format: html
+---
+
+```{r pacotes e input de dados}
+library(srvyr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(forcats)
+
+# baixa_dados()
+design <- le_dados()
+```
+
+```{r}
+populacao <- bind_rows(
+  design |> 
+    filter(UF=="Ceará") |> 
+    mutate(grupo = "Ceará") |> 
+    group_by(grupo) |> 
+    survey_count(name = "total_pop"),
+  design |> 
+    filter(UF%in%c("Maranhão", "Piauí", "Ceará", "Rio Grande do Norte",
+                  "Paraíba", "Pernambuco", "Alagoas", "Sergipe", "Bahia")) |> 
+    mutate(grupo = "Nordeste") |> 
+    group_by(grupo) |> 
+    survey_count(name = "total_pop"),
+  design |> 
+    mutate(grupo = "Brasil") |> 
+    group_by(grupo) |> 
+    survey_count(name = "total_pop")
+)
+
+populacao
+
+```
+
+```{r}
+pop_estados <- design |> 
+  group_by(UF) |> 
+  survey_count(name = "total_pop")
+
+pop_estados |> 
+  mutate(destaque = ifelse(UF == "Ceará", "Ceará", "Outros estados"),
+         UF = fct_rev(fct_reorder(UF, total_pop))) |> 
+  ggplot(aes(x = UF, y = total_pop, fill = destaque)) +
+  geom_col() +
+  geom_text(
+    aes(label = scales::number(total_pop / 1e6, accuracy = 0.1)),
+    hjust = -0.1, 
+    size = 3,
+    angle = 90
+  ) +
+  scale_fill_manual(values = c("Ceará" = "#FF6B35", "Outros estados" = "#4A90E2")) +
+  scale_y_continuous(
+    labels = scales::label_number(scale = 1e-6, suffix = "M"),
+    expand = expansion(mult = c(0, 0.2))  # Adiciona espaço no topo para os rótulos
+  ) +
+  labs(
+    title = "População por Estado Brasileiro - 2024",
+    x = "Estado",
+    y = "População (milhões)",
+    fill = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 9),
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    legend.position = "top",
+    panel.grid.major.x = element_blank()
+  )
+```
+
+```{r}
+piramide_etaria <- design |> 
+  filter(UF == "Ceará") |> 
+  group_by(V2007, VD2006) |> 
+  survey_count(name = "total_pop") 
+
+piramide_etaria |> 
+  mutate(total_pop = if_else(V2007 == "Homem", -total_pop, total_pop)) |> 
+  ggplot(aes(VD2006, total_pop, fill = V2007))+
+  geom_col() +
+  coord_flip() +
+  scale_y_continuous(
+    labels = function(x) scales::number(abs(x) / 1000, suffix = "k"),
+    breaks = seq(-400000, 400000, 100000)
+  ) +
+  scale_fill_manual(
+    values = c("Homem" = "#4A90E2", "Mulher" = "#FF6B35"),
+    labels = c("Homem" = "Homens", "Mulher" = "Mulheres")
+  ) +
+  labs(
+    title = "Pirâmide Etária - Ceará - 2024",
+    x = "Faixa Etária",
+    y = "População (milhares)",
+    fill = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    legend.position = "top",
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text = element_text(size = 10)
+  ) +
+  geom_vline(xintercept = 0, color = "gray50", linetype = "dashed", linewidth = 0.3)
+```
+
+```{r}
+raca <- design |> 
+  filter(UF == "Ceará") |> 
+  group_by(V2010) |> 
+  summarise(populacao = survey_total(),
+            proporcao = survey_prop())
+raca
+```
+
+```{r}
+sexo_responsavel <- design |> 
+  filter(UF=="Ceará"&V2005=="Pessoa responsável pelo domicílio"&!is.na(V2007)) |> 
+  group_by(V2007) |> 
+  summarise(proporcao = survey_prop())
+
+sexo_responsavel |> 
+  mutate(
+    ymax = cumsum(proporcao),
+    ymin = c(0, head(ymax, n = -1)),
+    labelPosition = (ymax + ymin) / 2,
+    label = paste0(V2007, "\n", scales::percent(proporcao, accuracy = 0.1))
+  )  |> 
+  ggplot(aes(ymax = ymax, ymin = ymin, xmax = 4, xmin = 3, fill = V2007)) +
+  geom_rect() +
+  geom_text(
+    aes(x = 3.5, y = labelPosition, label = label),
+    size = 5,
+    fontface = "bold",
+    color = "white"
+  ) +
+  scale_fill_manual(values = c("Homem" = "#4A90E2", "Mulher" = "#FF6B35")) +
+  coord_polar(theta = "y") +
+  xlim(c(2, 4)) +
+  labs(
+    title = "Pessoa responsável pelo domicílio por sexo - Ceará - 2024"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    legend.position = "none"
+  )
+```
