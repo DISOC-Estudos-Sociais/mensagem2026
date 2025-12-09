@@ -10,8 +10,11 @@ library(tidyr)
 library(ggplot2)
 library(forcats)
 
-# baixa_dados()
+# baixa_dados(year = 2023)
+# baixa_dados(year = 2024)
+
 design <- le_dados()
+design2023 <- le_dados(year = 2023)
 ```
 
 ```{r}
@@ -43,9 +46,9 @@ pop_estados <- design |>
   survey_count(name = "total_pop")
 
 pop_estados |> 
-  mutate(destaque = ifelse(UF == "Ceará", "Ceará", "Outros estados"),
-         UF = fct_rev(fct_reorder(UF, total_pop))) |> 
-  ggplot(aes(x = UF, y = total_pop, fill = destaque)) +
+  arrange(desc(total_pop)) |> 
+  mutate(destaque = ifelse(UF == "Ceará", "Ceará", "Outros estados")) |> 
+  ggplot(aes(x = fct_rev(fct_reorder(UF, total_pop)), y = total_pop, fill = destaque)) +
   geom_col() +
   geom_text(
     aes(label = scales::number(total_pop / 1e6, accuracy = 0.1)),
@@ -53,13 +56,13 @@ pop_estados |>
     size = 3,
     angle = 90
   ) +
-  scale_fill_manual(values = c("Ceará" = "#FF6B35", "Outros estados" = "#4A90E2")) +
+  scale_fill_manual(values = c("Ceará" = "#F59C00", "Outros estados" = "#26A737")) +
   scale_y_continuous(
     labels = scales::label_number(scale = 1e-6, suffix = "M"),
     expand = expansion(mult = c(0, 0.2))  # Adiciona espaço no topo para os rótulos
   ) +
   labs(
-    title = "População por Estado Brasileiro - 2024",
+    #title = "População por Estado Brasileiro - 2024",
     x = "Estado",
     y = "População (milhões)",
     fill = NULL
@@ -68,9 +71,11 @@ pop_estados |>
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1, size = 9),
     plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
-    legend.position = "top",
+    legend.position = "bottom",
     panel.grid.major.x = element_blank()
   )
+
+ggsave("output/pop_estados.png", width = 20, height = 15, units = "cm")
 ```
 
 ```{r}
@@ -89,11 +94,11 @@ piramide_etaria |>
     breaks = seq(-400000, 400000, 100000)
   ) +
   scale_fill_manual(
-    values = c("Homem" = "#4A90E2", "Mulher" = "#FF6B35"),
+    values = c("Homem" = "#26A737", "Mulher" = "#F59C00"),
     labels = c("Homem" = "Homens", "Mulher" = "Mulheres")
   ) +
   labs(
-    title = "Pirâmide Etária - Ceará - 2024",
+    #title = "Pirâmide Etária - Ceará - 2024",
     x = "Faixa Etária",
     y = "População (milhares)",
     fill = NULL
@@ -101,17 +106,20 @@ piramide_etaria |>
   theme_minimal() +
   theme(
     plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
-    legend.position = "top",
+    legend.position = "bottom",
     panel.grid.major.y = element_blank(),
     panel.grid.minor = element_blank(),
     axis.text = element_text(size = 10)
   ) +
   geom_vline(xintercept = 0, color = "gray50", linetype = "dashed", linewidth = 0.3)
+
+ggsave("output/piramide_etaria.png", width = 20, height = 15, units = "cm")
 ```
 
 ```{r}
 raca <- design |> 
   filter(UF == "Ceará") |> 
+  mutate(V2010 =  fct_other(V2010, keep = c("Branca", "Preta", "Parda"))) |> 
   group_by(V2010) |> 
   summarise(populacao = survey_total(),
             proporcao = survey_prop())
@@ -139,15 +147,17 @@ sexo_responsavel |>
     fontface = "bold",
     color = "white"
   ) +
-  scale_fill_manual(values = c("Homem" = "#4A90E2", "Mulher" = "#FF6B35")) +
+  scale_fill_manual(values = c("Homem" = "#26A737", "Mulher" = "#F59C00")) +
   coord_polar(theta = "y") +
   xlim(c(2, 4)) +
   labs(
-    title = "Pessoa responsável pelo domicílio por sexo - Ceará - 2024"
+    #title = "Pessoa responsável pelo domicílio por sexo - Ceará - 2024"
   ) +
   theme_void() +
   theme(
     plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
     legend.position = "none"
   )
+
+ggsave("output/sexo_responsavel.png", width = 20, height = 15, units = "cm")
 ```
