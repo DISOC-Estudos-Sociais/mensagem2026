@@ -4,43 +4,71 @@ format: html
 ---
 
 ```{r pacotes e input de dados}
+#| include: false
 library(srvyr)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(forcats)
+library(tinytable)
+
+funcoes <- list.files("R", pattern = "\\.R$", full.names = TRUE)
+sapply(funcoes, source, .GlobalEnv)
 
 # baixa_dados(year = 2023)
 # baixa_dados(year = 2024)
 
 design <- le_dados()
-design2023 <- le_dados(year = 2023)
+#design2023 <- le_dados(year = 2023)
 ```
 
+
 ```{r}
+#| label: tbl-domicilios
+#| tbl-cap: "População residente - Ceará, Nordeste e Brasil - 2023 - 2024"
+
 populacao <- bind_rows(
   design |> 
     filter(UF=="Ceará") |> 
-    mutate(grupo = "Ceará") |> 
-    group_by(grupo) |> 
+    mutate(grupo = "Ceará", ano = 2024) |> 
+    group_by(ano, grupo) |> 
+    survey_count(name = "total_pop"),
+  design2023 |> 
+    filter(UF=="Ceará") |> 
+    mutate(grupo = "Ceará", ano = 2023) |> 
+    group_by(ano, grupo) |> 
     survey_count(name = "total_pop"),
   design |> 
     filter(UF%in%c("Maranhão", "Piauí", "Ceará", "Rio Grande do Norte",
                   "Paraíba", "Pernambuco", "Alagoas", "Sergipe", "Bahia")) |> 
-    mutate(grupo = "Nordeste") |> 
-    group_by(grupo) |> 
+    mutate(grupo = "Nordeste", ano = 2024) |> 
+    group_by(ano, grupo) |> 
+    survey_count(name = "total_pop"),
+  design2023 |> 
+    filter(UF%in%c("Maranhão", "Piauí", "Ceará", "Rio Grande do Norte",
+                  "Paraíba", "Pernambuco", "Alagoas", "Sergipe", "Bahia")) |> 
+    mutate(grupo = "Nordeste", ano = 2023) |> 
+    group_by(ano, grupo) |> 
     survey_count(name = "total_pop"),
   design |> 
-    mutate(grupo = "Brasil") |> 
-    group_by(grupo) |> 
+    mutate(grupo = "Brasil", ano=2024) |> 
+    group_by(ano, grupo) |> 
+    survey_count(name = "total_pop"),
+  design2023 |> 
+    mutate(grupo = "Brasil", ano=2023) |> 
+    group_by(ano, grupo) |> 
     survey_count(name = "total_pop")
 )
 
-populacao
-
 ```
+::: {custom-style="Anotação"}
+*Fonte: IBGE. PNAD Contínua Anual 1ª Entrevista*
+:::
 
 ```{r}
+#| label: fig-situacao
+#| fig-cap: "População segundo Unidade Federativa (milhões de pessoas) - 2024"
+
 pop_estados <- design |> 
   group_by(UF) |> 
   survey_count(name = "total_pop")
@@ -77,8 +105,13 @@ pop_estados |>
 
 ggsave("output/pop_estados.png", width = 20, height = 15, units = "cm")
 ```
+::: {custom-style="Anotação"}
+*Fonte: IBGE. PNAD Contínua Anual 1ª Entrevista*
+:::
 
 ```{r}
+#| fig-cap: "População residente, segundo sexo e grupo etário - Ceará - 2024"
+
 piramide_etaria <- design |> 
   filter(UF == "Ceará") |> 
   group_by(V2007, VD2006) |> 
@@ -115,8 +148,13 @@ piramide_etaria |>
 
 ggsave("output/piramide_etaria.png", width = 20, height = 15, units = "cm")
 ```
+::: {custom-style="Anotação"}
+*Fonte: IBGE. PNAD Contínua Anual 1ª Entrevista*
+:::
 
 ```{r}
+#| tbl-cap: "População residente segundo cor ou raça declarada - Ceará - 2023-2024"
+
 raca <- design |> 
   filter(UF == "Ceará") |> 
   mutate(V2010 =  fct_other(V2010, keep = c("Branca", "Preta", "Parda"))) |> 
@@ -125,8 +163,13 @@ raca <- design |>
             proporcao = survey_prop())
 raca
 ```
+::: {custom-style="Anotação"}
+*Fonte: IBGE. PNAD Contínua Anual 1ª Entrevista*
+:::
 
 ```{r}
+#| fig-cap: "Proporção de pessoas responsáveis por domicílio segundo sexo - Ceará - 2024"
+
 sexo_responsavel <- design |> 
   filter(UF=="Ceará"&V2005=="Pessoa responsável pelo domicílio"&!is.na(V2007)) |> 
   group_by(V2007) |> 
@@ -161,3 +204,6 @@ sexo_responsavel |>
 
 ggsave("output/sexo_responsavel.png", width = 20, height = 15, units = "cm")
 ```
+::: {custom-style="Anotação"}
+*Fonte: IBGE. PNAD Contínua Anual 1ª Entrevista*
+:::
