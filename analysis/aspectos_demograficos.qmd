@@ -1,0 +1,373 @@
+---
+title: "Aspectos demográficos"
+format: html
+echo: false
+---
+
+```{r pacotes e input de dados}
+#| include: false
+
+library(srvyr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(forcats)
+library(tinytable)
+
+funcoes <- list.files("../R", pattern = "\\.R$", full.names = TRUE)
+sapply(funcoes, source, .GlobalEnv)
+
+# baixa_dados(year = 2023)
+# baixa_dados(year = 2024)
+# baixa_dados(year = 2022)
+
+design <- le_dados()
+design2023 <- le_dados(year = 2023)
+design2022 <- le_dados(year = 2022)
+```
+
+## População
+
+De acordo com a PNAD Contínua, a população do Ceará apresentou crescimento em 2024. Estima-se que o estado tenha alcançado 9,2 milhões de habitantes, o que corresponde a 16,2% da população total do Nordeste e a 4,4% da população residente no Brasil.
+
+```{r}
+#| label: tbl-populacao
+#| tbl-cap: "População residente - Ceará, Nordeste e Brasil - 2023 - 2024"
+
+populacao <- bind_rows(
+  design |> 
+    filter(UF=="Ceará") |> 
+    mutate(grupo = "Ceará", ano = 2024) |> 
+    group_by(ano, grupo) |> 
+    survey_count(name = "total_pop"),
+  design2023 |> 
+    filter(UF=="Ceará") |> 
+    mutate(grupo = "Ceará", ano = 2023) |> 
+    group_by(ano, grupo) |> 
+    survey_count(name = "total_pop"),
+  design2022 |> 
+    filter(UF=="Ceará") |> 
+    mutate(grupo = "Ceará", ano = 2022) |> 
+    group_by(ano, grupo) |> 
+    survey_count(name = "total_pop"),
+  design |> 
+    filter(UF%in%c("Maranhão", "Piauí", "Ceará", "Rio Grande do Norte",
+                  "Paraíba", "Pernambuco", "Alagoas", "Sergipe", "Bahia")) |> 
+    mutate(grupo = "Nordeste", ano = 2024) |> 
+    group_by(ano, grupo) |> 
+    survey_count(name = "total_pop"),
+  design2023 |> 
+    filter(UF%in%c("Maranhão", "Piauí", "Ceará", "Rio Grande do Norte",
+                  "Paraíba", "Pernambuco", "Alagoas", "Sergipe", "Bahia")) |> 
+    mutate(grupo = "Nordeste", ano = 2023) |> 
+    group_by(ano, grupo) |> 
+    survey_count(name = "total_pop"),
+  design2022 |> 
+    filter(UF%in%c("Maranhão", "Piauí", "Ceará", "Rio Grande do Norte",
+                  "Paraíba", "Pernambuco", "Alagoas", "Sergipe", "Bahia")) |> 
+    mutate(grupo = "Nordeste", ano = 2022) |> 
+    group_by(ano, grupo) |> 
+    survey_count(name = "total_pop"),
+  design |> 
+    mutate(grupo = "Brasil", ano=2024) |> 
+    group_by(ano, grupo) |> 
+    survey_count(name = "total_pop"),
+  design2023 |> 
+    mutate(grupo = "Brasil", ano=2023) |> 
+    group_by(ano, grupo) |> 
+    survey_count(name = "total_pop"),
+  design2022 |> 
+    mutate(grupo = "Brasil", ano=2022) |> 
+    group_by(ano, grupo) |> 
+    survey_count(name = "total_pop")
+)
+
+populacao |> 
+  select(-total_pop_se) |> 
+  arrange(ano) |> 
+  mutate(total_pop = total_pop/1000) |> 
+  pivot_wider(names_from = ano, values_from = total_pop) |> 
+  rename("Região ou UF" = grupo)
+  
+
+```
+
+::: {custom-style="Anotação"}
+*Fonte: IBGE. PNAD Contínua Anual 1ª Entrevista*
+:::
+
+No comparativo nacional, o Ceará ocupa a oitava posição entre as unidades federativas mais populosas (ver @fig-populacao) . São Paulo segue como o estado mais populoso, com cerca de 46 milhões de residentes, enquanto Roraima aparece na última posição, com aproximadamente 0,6 milhão de habitantes.
+
+Entre os estados do Nordeste, o Ceará é o terceiro mais populoso, ficando atrás apenas da Bahia (14,8 milhões) e de Pernambuco (9,5 milhões).
+
+```{r}
+#| label: fig-populacao
+#| fig-cap: "População segundo Unidade Federativa (milhões de pessoas) - 2024"
+
+pop_estados <- design |> 
+  group_by(UF) |> 
+  survey_count(name = "total_pop")
+
+pop_estados |> 
+  arrange(desc(total_pop)) |> 
+  mutate(destaque = ifelse(UF == "Ceará", "Ceará", "Outros estados")) |> 
+  ggplot(aes(x = fct_rev(fct_reorder(UF, total_pop)), y = total_pop, fill = destaque)) +
+  geom_col() +
+  geom_text(
+    aes(label = scales::number(total_pop / 1e6, accuracy = 0.1)),
+    hjust = -0.1, 
+    size = 3,
+    angle = 90
+  ) +
+  scale_fill_manual(values = c("Ceará" = "#F59C00", "Outros estados" = "#26A737")) +
+  scale_y_continuous(
+    labels = scales::label_number(scale = 1e-6, suffix = "M"),
+    expand = expansion(mult = c(0, 0.2))  # Adiciona espaço no topo para os rótulos
+  ) +
+  labs(
+    #title = "População por Estado Brasileiro - 2024",
+    x = "Estado",
+    y = "População (milhões)",
+    fill = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 9),
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    legend.position = "bottom",
+    panel.grid.major.x = element_blank()
+  )
+
+ggsave("../output/pop_estados.png", width = 20, height = 15, units = "cm")
+```
+
+::: {custom-style="Anotação"}
+*Fonte: IBGE. PNAD Contínua Anual 1ª Entrevista*
+:::
+
+```{r}
+#| eval: false
+#| include: false
+design |> 
+  filter(UF == "Ceará") |>  
+  group_by(VD2006) |> 
+  summarise(populacao = survey_total(),
+            proporcao = survey_prop())
+
+design |> 
+  filter(UF == "Ceará") |>  
+  group_by(V2007) |> 
+  summarise(populacao = survey_total(),
+            proporcao = survey_prop())
+```
+
+A pirâmide etária da população cearense (ver @fig-piramide) apresenta o perfil demográfico do Estado em 2024. Na distribuição por sexo, observa-se que 51,6% da população é composta por mulheres, enquanto os homens representam 48,4%. A população idosa, formada por pessoas com 60 anos ou mais, cresceu em relação ao ano anterior e passou a representar 16,5% do total. Já os jovens entre 14 e 29 anos correspondem a 24,0% da população.
+
+```{r}
+#| label: fig-piramide
+#| fig-cap: "População residente, segundo sexo e grupo etário - Ceará - 2024"
+
+piramide_etaria <- design |> 
+  filter(UF == "Ceará") |> 
+  group_by(V2007, VD2006) |> 
+  survey_count(name = "total_pop") 
+
+piramide_etaria |> 
+  mutate(total_pop = if_else(V2007 == "Homem", -total_pop, total_pop)) |> 
+  ggplot(aes(VD2006, total_pop, fill = V2007))+
+  geom_col() +
+  coord_flip() +
+  scale_y_continuous(
+    labels = function(x) scales::number(abs(x) / 1000, suffix = "k"),
+    breaks = seq(-400000, 400000, 100000)
+  ) +
+  scale_fill_manual(
+    values = c("Homem" = "#26A737", "Mulher" = "#F59C00"),
+    labels = c("Homem" = "Homens", "Mulher" = "Mulheres")
+  ) +
+  labs(
+    #title = "Pirâmide Etária - Ceará - 2024",
+    x = "Faixa Etária",
+    y = "População (milhares)",
+    fill = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    legend.position = "bottom",
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text = element_text(size = 10)
+  ) +
+  geom_vline(xintercept = 0, color = "gray50", linetype = "dashed", linewidth = 0.3)
+
+ggsave("../output/piramide_etaria.png", width = 20, height = 15, units = "cm")
+```
+
+::: {custom-style="Anotação"}
+*Fonte: IBGE. PNAD Contínua Anual 1ª Entrevista*
+:::
+
+```{r}
+#| label: fig-envelhecimento
+#| fig-cap: "Evolução da População por Faixa Etária - Ceará - 2020-2024"
+
+# Para facilitar o trabalho, peguei os números já processados pelo IBGE via SIDRA, tabela 6407.
+# Criar o tibble com os dados
+dados <- tibble(
+  grupo_idade = c(
+    rep("0 a 4 anos", 5),
+    rep("05 a 13 anos", 5),
+    rep("14 a 17 anos", 5),
+    rep("18 a 19 anos", 5),
+    rep("20 a 24 anos", 5),
+    rep("25 a 29 anos", 5),
+    rep("60 anos ou mais", 5)
+  ),
+  ano = rep(2020:2024, 7),
+  populacao = c(
+    658, 613, 591, 614, 563,
+    1133, 1263, 1130, 1178, 1145,
+    576, 603, 581, 550, 536,
+    296, 255, 276, 258, 250,
+    791, 754, 730, 701, 717,
+    749, 775, 748, 730, 706,
+    1228, 1218, 1372, 1352, 1523
+  )
+)
+
+# Criar o gráfico de linhas
+ggplot(dados, aes(x = ano, y = populacao, color = grupo_idade, group = grupo_idade)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  scale_x_continuous(breaks = 2020:2024) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    #title = "Evolução da População por Faixa Etária (2020-2024)",
+    #subtitle = "População em milhares de pessoas",
+    x = "Ano",
+    y = "População (mil pessoas)",
+    color = "Faixa Etária"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+
+```
+::: {custom-style="Anotação"}
+*Fonte: IBGE. PNAD Contínua Anual 1ª Entrevista (exceto 2020-21, 5ª Entrevista)*
+:::
+
+```{r}
+#| label: fig-razaodependencia
+#| fig-cap: "Evolução da Razão de Dependência - Ceará - 2020-2024"
+
+
+# Calcular a razão de dependência por ano
+razao_dependencia <- dados %>%
+  mutate(categoria = case_when(
+    grupo_idade %in% c("0 a 4 anos", "05 a 13 anos") ~ "0-14 anos",
+    grupo_idade == "60 anos ou mais" ~ "60+ anos",
+    TRUE ~ "Outros"
+  )) %>%
+  filter(categoria != "Outros") %>%
+  group_by(ano, categoria) %>%
+  summarise(pop_total = sum(populacao), .groups = "drop") %>%
+  pivot_wider(names_from = categoria, values_from = pop_total) %>%
+  mutate(razao_dependencia = `0-14 anos` / `60+ anos`)
+
+# Criar o gráfico da razão de dependência
+ggplot(razao_dependencia, aes(x = ano, y = razao_dependencia)) +
+  geom_line(color = "#2C3E50", linewidth = 1.5) +
+  geom_point(color = "#E74C3C", size = 4) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "gray50", linewidth = 0.8) +
+  scale_x_continuous(breaks = 2020:2024) +
+  scale_y_continuous(limits = c(0.8, 1.6), breaks = seq(0.8, 1.6, 0.1)) +
+  labs(
+    #title = "Evolução da Razão de Dependência (2020-2024)",
+    subtitle = "Razão entre população de 0-14 anos e população de 60+ anos",
+    x = "Ano",
+    y = "Razão de Dependência",
+    caption = "Linha tracejada: razão = 1 (populações iguais)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11, color = "gray30"),
+    panel.grid.minor = element_blank(),
+    plot.caption = element_text(size = 9, color = "gray50", hjust = 0)
+  )
+```
+::: {custom-style="Anotação"}
+*Fonte: IBGE. PNAD Contínua Anual 1ª Entrevista (exceto 2020-21, 5ª Entrevista)*
+:::
+
+Em relação aos domicílios no estado, a @fig-chefesdomicilios mostra a proporção de responsáveis por sexo. Em 2024, 55,9% dos domicílios cearenses tinham uma mulher como responsável, reforçando a tendência de crescimento dessa participação ao longo dos últimos anos.
+
+```{r}
+#| label: fig-chefesdomicilios
+#| message: false
+#| warning: false
+#| fig-cap: Proporção de pessoas responsáveis por domicílio segundo sexo - Ceará - 2024
+
+sexo_responsavel <- design |> 
+  filter(UF=="Ceará"&V2005=="Pessoa responsável pelo domicílio"&!is.na(V2007)) |> 
+  group_by(V2007) |> 
+  summarise(proporcao = survey_prop())
+
+sexo_responsavel |> 
+  mutate(
+    ymax = cumsum(proporcao),
+    ymin = c(0, head(ymax, n = -1)),
+    labelPosition = (ymax + ymin) / 2,
+    label = paste0(V2007, "\n", scales::percent(proporcao, accuracy = 0.1))
+  )  |> 
+  ggplot(aes(ymax = ymax, ymin = ymin, xmax = 4, xmin = 3, fill = V2007)) +
+  geom_rect() +
+  geom_text(
+    aes(x = 3.5, y = labelPosition, label = label),
+    size = 5,
+    fontface = "bold",
+    color = "white"
+  ) +
+  scale_fill_manual(values = c("Homem" = "#26A737", "Mulher" = "#F59C00")) +
+  coord_polar(theta = "y") +
+  xlim(c(2, 4)) +
+  labs(
+    #title = "Pessoa responsável pelo domicílio por sexo - Ceará - 2024"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+    legend.position = "none"
+  )
+
+ggsave("../output/sexo_responsavel.png", width = 20, height = 15, units = "cm")
+```
+
+::: {custom-style="Anotação"}
+*Fonte: IBGE. PNAD Contínua Anual 1ª Entrevista*
+:::
+
+A @tbl-raca evidencia que 66,8% dos residentes no Ceará se declaram pardos e 6,1% se declaram pretos em 2024. Em números absolutos, isso significa que 6,7 milhões de pessoas se identificam como pretas ou pardas. A população branca corresponde a 25,4% do total, o equivalente a 2,3 milhões de residentes.
+
+```{r}
+#| label: tbl-raca
+#| tbl-cap: "População residente segundo cor ou raça declarada - Ceará - 2023-2024"
+
+raca <- design |> 
+  filter(UF == "Ceará") |> 
+  mutate(V2010 =  fct_other(V2010, keep = c("Branca", "Preta", "Parda"))) |> 
+  group_by(V2010) |> 
+  summarise(populacao = survey_total(),
+            proporcao = survey_prop())
+
+select(raca, -populacao_se, -proporcao_se)
+```
+
+::: {custom-style="Anotação"}
+*Fonte: IBGE. PNAD Contínua Anual 1ª Entrevista*
+:::

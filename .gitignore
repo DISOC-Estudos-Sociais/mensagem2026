@@ -50,3 +50,6 @@ rsconnect/
 
 # Data formats
 *.RDS
+
+/.quarto/
+**/*.quarto_ipynb
