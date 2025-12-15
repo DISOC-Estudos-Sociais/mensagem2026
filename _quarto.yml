@@ -1,2 +1,11 @@
 project:
   output-dir: output
+
+format:
+  html: default
+  docx: default
+  
+fig-cap-location: top
+  
+execute:
+  echo: false

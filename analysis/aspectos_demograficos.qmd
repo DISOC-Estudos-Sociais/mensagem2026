@@ -1,7 +1,6 @@
 ---
 title: "Aspectos demográficos"
-format: html
-echo: false
+lang: pt-br
 ---
 
 ```{r pacotes e input de dados}
@@ -208,6 +207,7 @@ ggsave("../output/piramide_etaria.png", width = 20, height = 15, units = "cm")
 *Fonte: IBGE. PNAD Contínua Anual 1ª Entrevista*
 :::
 
+:::{layout="[1,1]"}
 ```{r}
 #| label: fig-envelhecimento
 #| fig-cap: "Evolução da População por Faixa Etária - Ceará - 2020-2024"
@@ -256,10 +256,9 @@ ggplot(dados, aes(x = ano, y = populacao, color = grupo_idade, group = grupo_ida
     panel.grid.minor = element_blank()
   )
 
+ggsave("../output/envelhecimento.png", width = 20, height = 15, units = "cm")
+
 ```
-::: {custom-style="Anotação"}
-*Fonte: IBGE. PNAD Contínua Anual 1ª Entrevista (exceto 2020-21, 5ª Entrevista)*
-:::
 
 ```{r}
 #| label: fig-razaodependencia
@@ -300,7 +299,10 @@ ggplot(razao_dependencia, aes(x = ano, y = razao_dependencia)) +
     panel.grid.minor = element_blank(),
     plot.caption = element_text(size = 9, color = "gray50", hjust = 0)
   )
+
+ggsave("../output/razaodependencia.png", width = 20, height = 15, units = "cm")
 ```
+:::
 ::: {custom-style="Anotação"}
 *Fonte: IBGE. PNAD Contínua Anual 1ª Entrevista (exceto 2020-21, 5ª Entrevista)*
 :::
